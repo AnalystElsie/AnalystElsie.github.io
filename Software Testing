@@ -1,0 +1,192 @@
+
+declare @Current_Record int =1
+declare @No_of_Records int =500
+declare @Student_ID int
+declare @Course_ID INT
+declare @EnrollmentStatus_ID int
+declare @Enrollment_Date date
+declare @Start_Date date ='2024-01-01'
+declare @End_Date date ='2024-03-31'
+declare @Num_Days int =Datediff(day,@start_Date,@End_Date)
+declare @Grade_ID int
+declare @Instructor_ID INT
+declare @GPA decimal(2,1)
+while @Current_Record<=@No_of_Records
+Begin
+select @Student_ID = cast(rand()*(select Max(Student_ID) from Students) as int)+1
+select @Course_ID = cast(rand() *(select max(Course_ID) from Courses) as int)+1
+select @EnrollmentStatus_ID = Cast(rand()*(select Max(EnrollmentStatus_ID) from Enrollment_Status) as int)+1
+select @Enrollment_Date =dateadd(day,cast(rand()*datediff(day,@Start_Date,@End_Date)as int)+1, @Start_Date)
+Select @Grade_ID = cast(rand() *(select max(Grade_ID) from Grades) as int)+1
+Select @Instructor_ID =cast(rand() *(select max(Instructor_ID) from Instructors) as int)+1
+select @GPA = case 
+				when @Grade_ID = 1 then ROUND((RAND() * 1.5) + 3.5, 1)
+				when @Grade_ID = 2 then ROUND((RAND() * 0.3) + 3.1, 1)
+				when @Grade_ID = 3 then ROUND((RAND() * 0.5) + 2.5, 1)
+				when @Grade_ID = 4 then ROUND((RAND() * 0.3) + 2.1, 1)
+				when @Grade_ID = 5 then ROUND((RAND() * 0.5) + 1.5, 1)
+				when @Grade_ID = 6 then ROUND((RAND() * 1.4), 1)
+				End
+Insert into Enrollment_Table(Student_ID,Course_ID,Enrollmentstatus__ID,Enrollment_Date,Grade_ID,Instructor_ID,GPA)
+Values( @Student_ID,@Course_ID,@EnrollmentStatus_ID,@Enrollment_Date,@Grade_ID,@Instructor_ID,@GPA)
+Select @Current_Record =@Current_Record+ 1
+End;
+
+--1.	Retrieve the student IDs and names of all enrolled students.
+Select s.Student_ID, Full_Name,Enrollment_Status
+from Students s
+join Enrollment_Table a
+on s.Student_ID =a.Student_ID
+join Enrollment_Status e
+on e.EnrollmentStatus_ID =a.Enrollmentstatus__ID
+where Enrollment_Status = 'Enrolled';
+
+ -- 2.Get the course codes and names of all available courses
+
+ select Course_Code, Course_Name
+ from Courses
+ where Course_Availabilty = 'yes';
+
+ --3.	Fetch the instructor IDs and names of all instructors teaching courses.
+ select i.Instructor_ID, CONCAT_WS(' ', i.First_Name,i.Last_Name) as FullName,c.Course_Name
+ from Courses c
+ join Instructors i
+ on c.Instructor_ID =i.Instructor_ID;
+
+ --4.	Retrieve the student IDs and course codes for all enrolled courses
+
+ Select s.Student_ID, Course_Code,Enrollment_Status
+from Students s
+join	Enrollment_Table a
+on s.Student_ID =a.Student_ID
+join Courses c
+on c.Course_ID = a.Course_ID
+join Enrollment_Status e
+on e.EnrollmentStatus_ID =a.Enrollmentstatus__ID
+where Enrollment_Status = 'Enrolled';
+
+--5.	Get the grades and corresponding course codes for all students.
+select a.Student_ID,Course_Code,Grade
+from Enrollment_Table a
+join Courses c
+on a.Course_ID = c.Course_ID
+join Grades g
+on g.Grade_ID = a.Grade_ID;
+
+--6. Retrieve the student IDs and names of students enrolled in courses with 'Advanced' in their course names.
+Select s.Student_ID, Full_Name, Course_Name
+from Students s
+join Enrollment_Table a
+on s.student_ID = a.Student_ID
+join Courses c
+on c.Course_ID=a.Course_ID
+where Course_Name like '%Advanced%' and Enrollment_ID =1;
+
+
+--7.	Get the course codes and names of courses taught by instructors with more than 5 years of teaching experience.
+
+select c.course_Code,c.Course_Name, concat_ws (' ', i.First_Name,i.Last_Name) as Full_Name
+from Courses c
+Join Instructors i
+on c.Instructor_ID = I.instructor_ID
+where Years_Of_Experience > 5;
+
+--8.	Fetch the student IDs and names of students who have enrolled in more than 3 courses.
+
+select Student_ID, Full_Name
+from Students 
+Where Student_ID IN (select Student_ID 
+					From Enrollment_Table
+					group by Student_ID
+					having count(student_ID)>3);
+
+--9.	Retrieve the instructor IDs and names of instructors teaching courses with more than 30 students enrolled.
+
+select i.Instructor_ID, CONCAT_WS(' ', First_Name,Last_Name) as Name_Of_instructor, Course_Name
+from Instructors i
+join Courses c
+on i.Instructor_ID= c.Instructor_ID
+where i.Instructor_ID in (
+							select Instructor_ID
+							from Enrollment_Table
+							Where Enrollment_ID =1
+							group by Instructor_ID
+							having count(*) > 30);
+
+--10.	Get the grades and corresponding course codes for students with a GPA greater than 3.5
+
+select s.Full_Name,grade,c.Course_Code,GPA
+from Enrollment_Table a
+join Grades g
+on g.Grade_ID = a.Grade_ID
+join Courses c
+on a.Course_ID = c.Course_ID
+Join Students s
+on s.Student_ID = a.Student_ID
+where GPA > 3.5;
+
+--Sorting:
+--1.	Retrieve the student IDs and names of all enrolled students, sorted alphabetically by student names
+
+ Select Distinct s.Student_ID, Full_Name
+from Students s
+join Enrollment_Table a
+on s.Student_ID =a.Student_ID
+where Enrollmentstatus__ID  = 1
+ORDER BY Full_Name;
+
+
+--2.Get the course codes and names of all available courses, sorted alphabetically by course codes.
+
+select Course_Code, Course_Name
+ from Courses
+ where Course_Availabilty = 'yes'
+ order by Course_Code;
+
+
+--3.Fetch the instructor IDs and names of all instructors teaching courses, sorted alphabetically by instructor names.
+select i.Instructor_ID, CONCAT_WS(' ', i.First_Name,i.Last_Name) as FullName,c.Course_Name
+ from Courses c
+ join Instructors i
+ on c.Instructor_ID =i.Instructor_ID
+ order by FullName;
+
+
+--4. Retrieve the student IDs and course codes for all enrolled courses, sorted in ascending order of student IDs.
+Select s.Student_ID, Course_code
+from Students s
+join Enrollment_Table a
+on s.Student_ID =a.Student_ID
+join Enrollment_Status e
+on e.EnrollmentStatus_ID =a.Enrollmentstatus__ID
+Join Courses c
+on c.Course_ID =a.Course_ID
+where Enrollment_Status = 'Enrolled'
+order by Student_ID;
+
+
+--5.Get the grades and corresponding course codes for all students, sorted in descending order of grades.
+
+select Full_Name, Course_Code,Grade
+from Enrollment_Table a
+join Students s
+on s.Student_ID= a.Student_ID
+join Grades g
+on g.Grade_ID =a.Grade_ID
+join Courses c
+on c.Course_ID = a.Course_ID
+order by Grade DESC;
+
+--Distinct:
+--1.	Retrieve distinct course levels available in the course offerings.
+select distinct(course_Level)
+From Courses
+where Course_Availabilty ='yes';
+
+
+
+--2.	Get distinct student IDs for all enrolled students.
+Select distinct(Student_ID)
+from Enrollment_Table
+where Enrollmentstatus__ID =1;
+
