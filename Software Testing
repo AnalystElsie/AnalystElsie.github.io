@@ -1,3 +1,6 @@
+/*
+Generate 500 records from January 1,2024 to March 31, 2024
+*/
 
 declare @Current_Record int =1
 declare @No_of_Records int =500
